@@ -1,10 +1,8 @@
-const { ethers } = require("hardhat");
-const fs = require('fs');
+import pkg from "hardhat";
+const { ethers } = pkg;
+import fs from 'fs';
 
-async function main() {
-    console.log("👥 CUENTAS DE PRUEBA DE HARDHAT");
-    console.log("=====================================\n");
-    
+async function main() {    
     const contractInfo = JSON.parse(fs.readFileSync('contract-address.json', 'utf8'));
     const CarbonCreditToken = await ethers.getContractFactory("CarbonCreditToken");
     const carbonToken = await CarbonCreditToken.attach(contractInfo.address);
@@ -51,7 +49,7 @@ async function main() {
             console.log(`   📝 ${account.description}`);
             console.log("");
         } catch (error) {
-            console.log(`❌ Error verificando cuenta ${account.name}`);
+            console.log(`❌ Error verificando cuenta ${account.name}:`, error.message);
         }
     }
     

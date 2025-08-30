@@ -49,10 +49,12 @@ export class EthersService implements OnModuleInit {
   private async initializeProvider() {
     try {
       this.provider = new ethers.JsonRpcProvider(this.blockchainConfig.nodeUrl);
-      
+
       // Test connection
       const network = await this.provider.getNetwork();
-      this.logger.log(`Connected to network: ${network.name} (chainId: ${network.chainId})`);
+      this.logger.log(
+        `Connected to network: ${network.name} (chainId: ${network.chainId})`
+      );
     } catch (error) {
       this.logger.error('Failed to initialize provider:', error.message);
       throw error;
@@ -61,12 +63,17 @@ export class EthersService implements OnModuleInit {
 
   private async initializeSigner() {
     try {
-      this.signer = new ethers.Wallet(this.blockchainConfig.privateKey, this.provider);
-      
+      this.signer = new ethers.Wallet(
+        this.blockchainConfig.privateKey,
+        this.provider
+      );
+
       // Test signer
       const address = await this.signer.getAddress();
       const balance = await this.provider.getBalance(address);
-      this.logger.log(`Signer address: ${address}, Balance: ${ethers.formatEther(balance)} ETH`);
+      this.logger.log(
+        `Signer address: ${address}, Balance: ${ethers.formatEther(balance)} ETH`
+      );
     } catch (error) {
       this.logger.error('Failed to initialize signer:', error.message);
       throw error;
@@ -74,19 +81,28 @@ export class EthersService implements OnModuleInit {
   }
 
   private async initializeContract() {
-    try {
-      this.contract = new ethers.Contract(
-        this.blockchainConfig.contractAddress,
-        this.contractABI,
-        this.signer
-      );
-      
-      // Test contract connection
-      const totalSupply = await this.contract.totalSupply();
-      this.logger.log(`Contract connected. Total supply: ${totalSupply.toString()}`);
-    } catch (error) {
-      this.logger.error('Failed to initialize contract:', error.message);
-      throw error;
+    this.contract = new ethers.Contract(
+      this.blockchainConfig.contractAddress,
+      this.contractABI,
+      this.signer
+    );
+
+    const code = await this.provider.getCode(this.contract.target as string);
+    if (code === '0x') {
+      throw new Error(`No contract deployed at ${this.contract.target}`);
+    }
+
+    if ('totalSupply' in this.contract) {
+      try {
+        const totalSupply = await this.contract.totalSupply();
+        this.logger.log(
+          `Contract connected. Total supply: ${totalSupply.toString()}`
+        );
+      } catch (err) {
+        this.logger.warn(
+          'Contract connected but totalSupply() failed. ABI mismatch?'
+        );
+      }
     }
   }
 
@@ -113,7 +129,10 @@ export class EthersService implements OnModuleInit {
   }
 
   async waitForTransaction(txHash: string): Promise<ethers.TransactionReceipt> {
-    return await this.provider.waitForTransaction(txHash, this.blockchainConfig.confirmations);
+    return await this.provider.waitForTransaction(
+      txHash,
+      this.blockchainConfig.confirmations
+    );
   }
 
   formatEther(value: bigint): string {

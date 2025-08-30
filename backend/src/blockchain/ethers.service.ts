@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { BlockchainConfigService } from './blockchain-config.service';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class EthersService implements OnModuleInit {
@@ -81,15 +83,34 @@ export class EthersService implements OnModuleInit {
   }
 
   private async initializeContract() {
+    const artifactPath = path.resolve(
+      __dirname,
+      '../../../artifacts/contracts/CarbonCreditToken.sol/CarbonCreditToken.json'
+    );
+    const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
+
+    const contractInfoPath = path.resolve(
+      __dirname,
+      '../../../scripts/contract-address.json'
+    );
+    const parsedContractInfo = JSON.parse(
+      fs.readFileSync(contractInfoPath, 'utf8')
+    );
+    this.provider = new ethers.JsonRpcProvider(process.env.ETHEREUM_NODE_URL);
+    this.signer = new ethers.Wallet(
+      process.env.ETHEREUM_PRIVATE_KEY,
+      this.provider
+    );
+
     this.contract = new ethers.Contract(
-      this.blockchainConfig.contractAddress,
-      this.contractABI,
+      parsedContractInfo.address,
+      artifact.abi,
       this.signer
     );
 
-    const code = await this.provider.getCode(this.contract.target as string);
+    const code = await this.provider.getCode(parsedContractInfo.address);
     if (code === '0x') {
-      throw new Error(`No contract deployed at ${this.contract.target}`);
+      throw new Error(`No contract deployed at ${this.contract.address}`);
     }
 
     if ('totalSupply' in this.contract) {
@@ -98,7 +119,7 @@ export class EthersService implements OnModuleInit {
         this.logger.log(
           `Contract connected. Total supply: ${totalSupply.toString()}`
         );
-      } catch (err) {
+      } catch {
         this.logger.warn(
           'Contract connected but totalSupply() failed. ABI mismatch?'
         );

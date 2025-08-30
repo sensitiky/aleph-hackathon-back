@@ -5,7 +5,11 @@ import { Repository } from 'typeorm';
 import { ethers } from 'ethers';
 import { EthersService } from './ethers.service';
 import { TransactionHistoryService } from '../transaction-history/transaction-history.service';
-import { Transaction, TransactionType, TransactionStatus } from '../entities/transaction.entity';
+import {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+} from '../entities/transaction.entity';
 import { User } from '../entities/user.entity';
 import { Project } from '../entities/project.entity';
 
@@ -42,7 +46,7 @@ export class BlockchainEventsService implements OnModuleInit {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     @InjectRepository(Project)
-    private projectRepository: Repository<Project>,
+    private projectRepository: Repository<Project>
   ) {}
 
   async onModuleInit() {
@@ -50,7 +54,10 @@ export class BlockchainEventsService implements OnModuleInit {
       await this.initializeContract();
       await this.startListening();
     } catch (error) {
-      this.logger.error('Failed to initialize blockchain event listeners:', error);
+      this.logger.error(
+        'Failed to initialize blockchain event listeners:',
+        error
+      );
     }
   }
 
@@ -64,45 +71,63 @@ export class BlockchainEventsService implements OnModuleInit {
       this.logger.warn('Event listeners are already running');
       return;
     }
-
+    if (this.contract) this.logger.warn('CUACK', this.contract);
     this.logger.log('Starting blockchain event listeners...');
 
     // Listen for CreditMinted events
-    this.contract.on('CreditMinted', async (creditId, to, amount, projectId, creditType, event) => {
-      await this.handleCreditMintedEvent({
-        creditId,
-        to,
-        amount,
-        projectId,
-        creditType,
-      }, event);
-    });
+    this.contract.on(
+      'CreditMinted',
+      async (creditId, to, amount, projectId, creditType, event) => {
+        await this.handleCreditMintedEvent(
+          {
+            creditId,
+            to,
+            amount,
+            projectId,
+            creditType,
+          },
+          event
+        );
+      }
+    );
 
     // Listen for Transfer events (ERC20)
     this.contract.on('Transfer', async (from, to, value, event) => {
-      await this.handleTransferEvent({
-        from,
-        to,
-        value,
-      }, event);
+      await this.handleTransferEvent(
+        {
+          from,
+          to,
+          value,
+        },
+        event
+      );
     });
 
     // Listen for CreditRetired events
-    this.contract.on('CreditRetired', async (creditId, retiredBy, amount, event) => {
-      await this.handleCreditRetiredEvent({
-        creditId,
-        retiredBy,
-        amount,
-      }, event);
-    });
+    this.contract.on(
+      'CreditRetired',
+      async (creditId, retiredBy, amount, event) => {
+        await this.handleCreditRetiredEvent(
+          {
+            creditId,
+            retiredBy,
+            amount,
+          },
+          event
+        );
+      }
+    );
 
     // Listen for Approval events
     this.contract.on('Approval', async (owner, spender, value, event) => {
-      await this.handleApprovalEvent({
-        owner,
-        spender,
-        value,
-      }, event);
+      await this.handleApprovalEvent(
+        {
+          owner,
+          spender,
+          value,
+        },
+        event
+      );
     });
 
     // Listen for ProjectVerified events
@@ -127,10 +152,12 @@ export class BlockchainEventsService implements OnModuleInit {
 
   private async handleCreditMintedEvent(
     eventData: CreditMintedEvent,
-    event: ethers.Log,
+    event: ethers.Log
   ) {
     try {
-      this.logger.log(`Credit minted: ID ${eventData.creditId}, Amount: ${eventData.amount}, To: ${eventData.to}`);
+      this.logger.log(
+        `Credit minted: ID ${eventData.creditId}, Amount: ${eventData.amount}, To: ${eventData.to}`
+      );
 
       // Find user by wallet address
       const user = await this.userRepository.findOne({
@@ -161,7 +188,9 @@ export class BlockchainEventsService implements OnModuleInit {
         projectId: project?.id,
       });
 
-      this.logger.log(`Transaction record created for credit mint: ${event.transactionHash}`);
+      this.logger.log(
+        `Transaction record created for credit mint: ${event.transactionHash}`
+      );
     } catch (error) {
       this.logger.error('Error handling CreditMinted event:', error);
     }
@@ -169,21 +198,27 @@ export class BlockchainEventsService implements OnModuleInit {
 
   private async handleTransferEvent(
     eventData: TransferEvent,
-    event: ethers.Log,
+    event: ethers.Log
   ) {
     try {
       // Skip zero transfers and mint/burn events (already handled elsewhere)
-      if (eventData.value === 0n || 
-          eventData.from === ethers.ZeroAddress || 
-          eventData.to === ethers.ZeroAddress) {
+      if (
+        eventData.value === 0n ||
+        eventData.from === ethers.ZeroAddress ||
+        eventData.to === ethers.ZeroAddress
+      ) {
         return;
       }
 
-      this.logger.log(`Transfer: From ${eventData.from}, To: ${eventData.to}, Amount: ${eventData.value}`);
+      this.logger.log(
+        `Transfer: From ${eventData.from}, To: ${eventData.to}, Amount: ${eventData.value}`
+      );
 
       // Find users by wallet addresses
       const [fromUser, toUser] = await Promise.all([
-        this.userRepository.findOne({ where: { walletAddress: eventData.from } }),
+        this.userRepository.findOne({
+          where: { walletAddress: eventData.from },
+        }),
         this.userRepository.findOne({ where: { walletAddress: eventData.to } }),
       ]);
 
@@ -200,7 +235,9 @@ export class BlockchainEventsService implements OnModuleInit {
         userId: fromUser?.id || toUser?.id, // Prefer sender, fallback to receiver
       });
 
-      this.logger.log(`Transaction record created for transfer: ${event.transactionHash}`);
+      this.logger.log(
+        `Transaction record created for transfer: ${event.transactionHash}`
+      );
     } catch (error) {
       this.logger.error('Error handling Transfer event:', error);
     }
@@ -208,10 +245,12 @@ export class BlockchainEventsService implements OnModuleInit {
 
   private async handleCreditRetiredEvent(
     eventData: CreditRetiredEvent,
-    event: ethers.Log,
+    event: ethers.Log
   ) {
     try {
-      this.logger.log(`Credit retired: ID ${eventData.creditId}, Amount: ${eventData.amount}, By: ${eventData.retiredBy}`);
+      this.logger.log(
+        `Credit retired: ID ${eventData.creditId}, Amount: ${eventData.amount}, By: ${eventData.retiredBy}`
+      );
 
       // Find user by wallet address
       const user = await this.userRepository.findOne({
@@ -235,7 +274,9 @@ export class BlockchainEventsService implements OnModuleInit {
         userId: user?.id,
       });
 
-      this.logger.log(`Transaction record created for credit retirement: ${event.transactionHash}`);
+      this.logger.log(
+        `Transaction record created for credit retirement: ${event.transactionHash}`
+      );
     } catch (error) {
       this.logger.error('Error handling CreditRetired event:', error);
     }
@@ -243,10 +284,12 @@ export class BlockchainEventsService implements OnModuleInit {
 
   private async handleApprovalEvent(
     eventData: { owner: string; spender: string; value: bigint },
-    event: ethers.Log,
+    event: ethers.Log
   ) {
     try {
-      this.logger.log(`Approval: Owner ${eventData.owner}, Spender: ${eventData.spender}, Amount: ${eventData.value}`);
+      this.logger.log(
+        `Approval: Owner ${eventData.owner}, Spender: ${eventData.spender}, Amount: ${eventData.value}`
+      );
 
       // Find user by wallet address
       const user = await this.userRepository.findOne({
@@ -266,7 +309,9 @@ export class BlockchainEventsService implements OnModuleInit {
         userId: user?.id,
       });
 
-      this.logger.log(`Transaction record created for approval: ${event.transactionHash}`);
+      this.logger.log(
+        `Transaction record created for approval: ${event.transactionHash}`
+      );
     } catch (error) {
       this.logger.error('Error handling Approval event:', error);
     }
@@ -274,7 +319,7 @@ export class BlockchainEventsService implements OnModuleInit {
 
   private async handleProjectVerifiedEvent(
     projectId: string,
-    event: ethers.Log,
+    event: ethers.Log
   ) {
     try {
       this.logger.log(`Project verified: ${projectId}`);
@@ -304,12 +349,14 @@ export class BlockchainEventsService implements OnModuleInit {
     this.logger.log(`Syncing past events from block ${fromBlock}...`);
 
     try {
-      const currentBlock = await this.ethersService.getProvider().getBlockNumber();
+      const currentBlock = await this.ethersService
+        .getProvider()
+        .getBlockNumber();
       const chunkSize = 1000; // Process in chunks to avoid RPC limits
 
       for (let start = fromBlock; start <= currentBlock; start += chunkSize) {
         const end = Math.min(start + chunkSize - 1, currentBlock);
-        
+
         this.logger.log(`Processing blocks ${start} to ${end}`);
 
         // Get all events for this chunk
@@ -348,41 +395,56 @@ export class BlockchainEventsService implements OnModuleInit {
 
       switch (parsedEvent.name) {
         case 'CreditMinted':
-          await this.handleCreditMintedEvent({
-            creditId: parsedEvent.args.creditId,
-            to: parsedEvent.args.to,
-            amount: parsedEvent.args.amount,
-            projectId: parsedEvent.args.projectId,
-            creditType: parsedEvent.args.creditType,
-          }, event);
+          await this.handleCreditMintedEvent(
+            {
+              creditId: parsedEvent.args.creditId,
+              to: parsedEvent.args.to,
+              amount: parsedEvent.args.amount,
+              projectId: parsedEvent.args.projectId,
+              creditType: parsedEvent.args.creditType,
+            },
+            event
+          );
           break;
 
         case 'Transfer':
-          await this.handleTransferEvent({
-            from: parsedEvent.args.from,
-            to: parsedEvent.args.to,
-            value: parsedEvent.args.value,
-          }, event);
+          await this.handleTransferEvent(
+            {
+              from: parsedEvent.args.from,
+              to: parsedEvent.args.to,
+              value: parsedEvent.args.value,
+            },
+            event
+          );
           break;
 
         case 'CreditRetired':
-          await this.handleCreditRetiredEvent({
-            creditId: parsedEvent.args.creditId,
-            retiredBy: parsedEvent.args.retiredBy,
-            amount: parsedEvent.args.amount,
-          }, event);
+          await this.handleCreditRetiredEvent(
+            {
+              creditId: parsedEvent.args.creditId,
+              retiredBy: parsedEvent.args.retiredBy,
+              amount: parsedEvent.args.amount,
+            },
+            event
+          );
           break;
 
         case 'Approval':
-          await this.handleApprovalEvent({
-            owner: parsedEvent.args.owner,
-            spender: parsedEvent.args.spender,
-            value: parsedEvent.args.value,
-          }, event);
+          await this.handleApprovalEvent(
+            {
+              owner: parsedEvent.args.owner,
+              spender: parsedEvent.args.spender,
+              value: parsedEvent.args.value,
+            },
+            event
+          );
           break;
 
         case 'ProjectVerified':
-          await this.handleProjectVerifiedEvent(parsedEvent.args.projectId, event);
+          await this.handleProjectVerifiedEvent(
+            parsedEvent.args.projectId,
+            event
+          );
           break;
       }
     } catch (error) {

@@ -1,0 +1,15 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "npm install && npx hardhat compile"
+  },
+  "deploy": {
+    "startCommand": "npx hardhat node --hostname 0.0.0.0 --port 8545 & npx hardhat run scripts/deploy.mjs --network localhost",
+    "numReplicas": 1,
+    "sleepApplication": false,
+    "restartPolicyType": "ON_FAILURE"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

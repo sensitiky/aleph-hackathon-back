@@ -24,6 +24,8 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@nomicfoundation/solidity-analyzer-win32-x64-msvc": "^0.1.2",
+    "@openzeppelin/contracts": "^5.4.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -68,5 +70,6 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  }
+  },
+  "type": "module"
 }
